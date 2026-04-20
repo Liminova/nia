@@ -187,30 +187,31 @@ async fn inner_main() -> anyhow::Result<()> {
             username,
             password,
         }) => {
-            let mut navidrome = nia_navidrome::NavidromeClient::new(server);
-            navidrome.login(username, password).await?;
+            // let mut navidrome = nia_navidrome::NavidromeClient::new(server);
+            // navidrome.login(username, password).await?;
         }
 
         Some(Command::NowPlaying { server }) => {
-            let creds = NavidromeCredentials::load(&server).await?;
-            let navidrome = nia_navidrome::NavidromeClient::with_credentials(server, creds.clone());
+            // let creds = NavidromeCredentials::load(&server).await?;
+            // let navidrome = nia_navidrome::NavidromeClient::with_credentials(server,
+            // creds.clone());
 
-            tracing::info!("creds: {:?}", creds);
+            // tracing::info!("creds: {:?}", creds);
 
-            let resp = navidrome.get_now_playing().await?;
+            // let resp = navidrome.get_now_playing().await?;
 
-            tracing::info!("received resp: {:?}", resp);
+            // tracing::info!("received resp: {:?}", resp);
 
-            tracing::info!(
-                "now playing: {:?}",
-                resp.inner_subsonic_response
-                    .body
-                    .now_playing
-                    .entry
-                    .first()
-                    .as_ref()
-                    .map(|f| f.title.clone())
-            );
+            // tracing::info!(
+            // "now playing: {:?}",
+            // resp.inner_subsonic_response
+            // .body
+            // .now_playing
+            // .entry
+            // .first()
+            // .as_ref()
+            // .map(|f| f.title.clone())
+            // );
         }
     }
 
