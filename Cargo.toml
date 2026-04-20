@@ -44,3 +44,9 @@ parking_lot = "0.12.5"
 serde_urlencoded = "0.7.1"
 url = "2.5.8"
 zed-http-client = "0.2.0"
+gpui-tokio = { path = "crates/gpui_tokio" }
+regex = "1.12.3"
+reqwest_client = { path = "crates/reqwest_client" }
+rustls = "0.23.38"
+rustls-platform-verifier = "0.7.0"
+whoami = "2.1.1"

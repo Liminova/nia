@@ -20,7 +20,7 @@ url = { workspace = true }
 gpui_http_client = { workspace = true }
 reqwest.workspace = true
 gpui_util.workspace = true
-regex = "1.12.3"
+regex = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "tracing"] }
-rustls = "0.23.38"
-rustls-platform-verifier = "0.7.0"
+rustls = { workspace = true }
+rustls-platform-verifier = { workspace = true }

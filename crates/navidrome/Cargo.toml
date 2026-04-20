@@ -11,7 +11,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-reqwest_client = { path = "../reqwest_client" }
+reqwest_client = { workspace = true }
 gpui_http_client.workspace = true
 futures.workspace = true
 gpui.workspace = true
