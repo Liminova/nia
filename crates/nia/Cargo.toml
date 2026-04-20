@@ -1,0 +1,15 @@
+[package]
+name = "nia"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+futures-util = { workspace = true }
+gpui = { workspace = true }
+gpui_util = { workspace = true }
+nia-navidrome = { workspace = true }
+nia-ui = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "sync", "tracing"] }
+reqwest_client = { path = "../reqwest_client" }
+gpui-tokio = { path = "../gpui_tokio" }

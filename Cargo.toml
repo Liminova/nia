@@ -1,0 +1,46 @@
+[workspace]
+members = [
+  "crates/cli",
+  "crates/gpui_tokio",
+  "crates/navidrome",
+  "crates/nia",
+  "crates/reqwest_client",
+  "crates/ui",
+]
+resolver = "3"
+
+[workspace.dependencies]
+anyhow = "1.0.102"
+clap = "4.6.0"
+keyring = "3.6.3"
+nia-navidrome = { path = "crates/navidrome" }
+reqwest = { package = "zed-reqwest", version = "0.12.15-zed", default-features = false, features = [
+  "charset",
+  "http2",
+  "multipart",
+  "rustls-tls-native-roots",
+  "socks",
+  "stream",
+] }
+serde = "1.0.228"
+serde_json = "1.0.149"
+tokio = "1.52.0"
+tracing = "0.1.44"
+tracing-subscriber = "0.3.23"
+gpui = "0.2.2"
+gpui_util = "0.2.2"
+gpui_http_client = "0.2.0"
+futures-util = "0.3.32"
+nia-ui = { path = "crates/ui" }
+unicode-segmentation = "1.13.2"
+async-compression = "0.4.41"
+bytes = "1.11.1"
+derive_more = "2.1.1"
+futures = "0.3.32"
+http = "1.4.0"
+http-body = "1.0.1"
+log = "0.4.29"
+parking_lot = "0.12.5"
+serde_urlencoded = "0.7.1"
+url = "2.5.8"
+zed-http-client = "0.2.0"

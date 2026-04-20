@@ -1,0 +1,11 @@
+[package]
+name = "gpui-tokio"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+anyhow.workspace = true
+gpui_util.workspace = true
+gpui.workspace = true
+tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }

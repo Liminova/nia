@@ -1,0 +1,26 @@
+[package]
+name = "reqwest_client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+async-compression = { workspace = true }
+bytes = { workspace = true }
+derive_more = { workspace = true, features = ["full"] }
+futures = { workspace = true }
+http = { workspace = true }
+http-body = { workspace = true }
+log = { workspace = true }
+parking_lot = { workspace = true }
+serde.workspace = true
+serde_json.workspace = true
+serde_urlencoded = { workspace = true }
+url = { workspace = true }
+gpui_http_client = { workspace = true }
+reqwest.workspace = true
+gpui_util.workspace = true
+regex = "1.12.3"
+tokio = { workspace = true, features = ["rt-multi-thread", "tracing"] }
+rustls = "0.23.38"
+rustls-platform-verifier = "0.7.0"

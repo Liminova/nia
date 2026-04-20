@@ -1,0 +1,17 @@
+[package]
+name = "nia-cli"
+version = "0.1.0"
+edition = "2024"
+default-run = "nia-cli"
+
+[dependencies]
+clap = { workspace = true, features = ["cargo", "derive"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "tracing", "macros"] }
+nia-navidrome = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
+fork = "0.7.0"
+exec = "0.3.1"
