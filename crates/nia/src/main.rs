@@ -78,6 +78,9 @@ impl LoginScreen {
             match login.await {
                 Ok(creds) => {
                     cx.update_global::<AppState, _>(|state, _| {
+                        creds
+                            .save(&whoami::username().unwrap_or_else(|_| "nia".to_string()))
+                            .ok();
                         state.credentials = Some(creds);
                     })
                     .ok();
@@ -121,6 +124,22 @@ impl Render for LoginScreen {
 }
 
 fn main() {
+    let log_level = if std::env::var("RUST_LOG").is_ok() {
+        tracing_subscriber::EnvFilter::from_default_env()
+    } else {
+        tracing_subscriber::EnvFilter::new("info")
+    };
+
+    #[cfg(debug_assertions)]
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(log_level)
+        .pretty()
+        .init();
+    #[cfg(not(debug_assertions))]
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(log_level)
+        .init();
+
     Application::new().run(|cx| {
         gpui_tokio::init(cx);
         let http = {
@@ -130,9 +149,21 @@ fn main() {
         };
         cx.set_http_client(Arc::new(http));
 
-        let state = AppState {
-            base_url: String::new(),
-            credentials: None,
+        let user = whoami::username().unwrap_or_else(|_| "nia".to_string());
+        let credentials = NavidromeCredentials::load(&user);
+
+        let state = match credentials {
+            Ok(creds) => AppState {
+                base_url: creds.server.clone(),
+                credentials: Some(creds),
+            },
+            Err(_) => {
+                tracing::warn!("failed to load credentials for user {}", user);
+                AppState {
+                    base_url: String::new(),
+                    credentials: None,
+                }
+            }
         };
 
         cx.set_global::<AppState>(state);
@@ -158,6 +189,15 @@ fn main() {
                     ..Default::default()
                 },
                 |_, cx| {
+                    let has_credentials = cx.global::<AppState>().credentials.is_some();
+
+                    if has_credentials {
+                        return cx.new(|_cx| RootView {
+                            screen: Screen::Main,
+                            _subscriptions: Vec::new(),
+                        });
+                    }
+
                     let server_input = cx.new(|cx| TextInput {
                         focus_handle: cx.focus_handle(),
                         content: "".into(),

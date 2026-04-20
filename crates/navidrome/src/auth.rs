@@ -14,25 +14,25 @@ pub struct NavidromeCredentials {
 }
 
 impl NavidromeCredentials {
-    pub async fn save(&self, server: &str) -> anyhow::Result<()> {
+    pub fn save(&self, user: &str) -> anyhow::Result<()> {
         let creds = serde_json::to_string(&self)?;
 
-        let entry = keyring::Entry::new("nia", server)?;
+        let entry = keyring::Entry::new("nia", user)?;
         entry.set_password(&creds)?;
 
         Ok(())
     }
 
-    pub async fn load(server: &str) -> anyhow::Result<Self> {
-        let entry = keyring::Entry::new("nia", server)?;
+    pub fn load(user: &str) -> anyhow::Result<Self> {
+        let entry = keyring::Entry::new("nia", user)?;
         let creds = entry.get_password()?;
         let creds: NavidromeCredentials = serde_json::from_str(&creds)?;
 
         Ok(creds)
     }
 
-    pub async fn logout(server: &str) -> anyhow::Result<()> {
-        let entry = keyring::Entry::new("nia", server)?;
+    pub fn logout(user: &str) -> anyhow::Result<()> {
+        let entry = keyring::Entry::new("nia", user)?;
         entry.delete_credential()?;
 
         Ok(())
