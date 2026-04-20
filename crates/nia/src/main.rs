@@ -1,17 +1,21 @@
+mod screens;
+
 use std::sync::Arc;
 
 use gpui::prelude::*;
 use gpui::{
-    Application, Entity, EventEmitter, FocusHandle, Focusable, Global, KeyBinding, MouseButton,
-    MouseUpEvent, Subscription, Window, WindowOptions, black, div, rgb, white,
+    Application, Entity, EventEmitter, Focusable, Global, KeyBinding, Subscription, Window,
+    WindowOptions,
 };
 use gpui_tokio::Tokio;
-use nia_navidrome::auth::NavidromeCredentials;
+use nia_navidrome::auth::{NavidromeCredentials, login};
 use nia_ui::components::text_input::{
     Backspace, Cut, Delete, End, Home, Left, Paste, Quit, Right, SelectAll, SelectLeft,
-    SelectRight, ShowCharacterPalette, TextInput,
+    SelectRight, ShowCharacterPalette,
 };
 use reqwest_client::ReqwestClient;
+
+use crate::screens::{LoginScreen, MainScreen};
 
 struct AppState {
     base_url: String,
@@ -23,11 +27,17 @@ impl Global for AppState {}
 #[derive(Clone)]
 enum Screen {
     Login(Entity<LoginScreen>),
+    Main(Entity<MainScreen>),
+}
+
+#[derive(Clone)]
+enum NavTarget {
+    Login,
     Main,
 }
 
 #[derive(Clone)]
-struct NavigateTo(Screen);
+struct NavigateTo(NavTarget);
 
 impl EventEmitter<NavigateTo> for RootView {}
 
@@ -40,86 +50,8 @@ impl Render for RootView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         match self.screen {
             Screen::Login(ref login) => login.clone().into_any_element(),
-            Screen::Main => div().size_full().bg(black()).into_any_element(),
+            Screen::Main(ref main) => main.clone().into_any_element(),
         }
-    }
-}
-
-struct LoginScreen {
-    server_input: Entity<TextInput>,
-    username_input: Entity<TextInput>,
-    password_input: Entity<TextInput>,
-    focus_handle: FocusHandle,
-}
-
-impl EventEmitter<NavigateTo> for LoginScreen {}
-
-impl Focusable for LoginScreen {
-    fn focus_handle(&self, _cx: &gpui::App) -> FocusHandle {
-        self.focus_handle.clone()
-    }
-}
-
-impl LoginScreen {
-    fn on_submit_click(&mut self, _: &MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        let server = self.server_input.read(cx).content.clone().to_string();
-        let username = self.username_input.read(cx).content.clone().to_string();
-        let password = self.password_input.read(cx).content.clone().to_string();
-
-        cx.update_global(|state: &mut AppState, _| {
-            state.base_url = server.clone();
-        });
-
-        let client = cx.http_client();
-
-        cx.spawn(async move |this, cx| {
-            let login = nia_navidrome::auth::login(client, server, username, password);
-
-            match login.await {
-                Ok(creds) => {
-                    cx.update_global::<AppState, _>(|state, _| {
-                        creds
-                            .save(&whoami::username().unwrap_or_else(|_| "nia".to_string()))
-                            .ok();
-                        state.credentials = Some(creds);
-                    })
-                    .ok();
-
-                    this.update(cx, |_, cx| {
-                        cx.emit(NavigateTo(Screen::Main));
-                    })
-                    .ok()
-                }
-                Err(e) => {
-                    eprintln!("login failed: {e}");
-                    Some(())
-                }
-            }
-        })
-        .detach();
-    }
-}
-
-impl Render for LoginScreen {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .bg(rgb(0xaaaaaa))
-            .track_focus(&self.focus_handle(cx))
-            .flex()
-            .flex_col()
-            .size_full()
-            .child(self.server_input.clone())
-            .child(self.username_input.clone())
-            .child(self.password_input.clone())
-            .child(
-                div()
-                    .bg(white())
-                    .border_b_1()
-                    .border_color(black())
-                    .flex()
-                    .child("Login")
-                    .on_mouse_up(MouseButton::Left, cx.listener(Self::on_submit_click)),
-            )
     }
 }
 
@@ -192,67 +124,27 @@ fn main() {
                     let has_credentials = cx.global::<AppState>().credentials.is_some();
 
                     if has_credentials {
-                        return cx.new(|_cx| RootView {
-                            screen: Screen::Main,
+                        return cx.new(|cx| RootView {
+                            screen: Screen::Main(MainScreen::new(cx)),
                             _subscriptions: Vec::new(),
                         });
                     }
 
-                    let server_input = cx.new(|cx| TextInput {
-                        focus_handle: cx.focus_handle(),
-                        content: "".into(),
-                        placeholder: "Server".into(),
-                        selected_range: 0..0,
-                        selection_reversed: false,
-                        marked_range: None,
-                        last_layout: None,
-                        last_bounds: None,
-                        is_selecting: false,
-                        masked: false,
-                    });
-
-                    let username_input = cx.new(|cx| TextInput {
-                        focus_handle: cx.focus_handle(),
-                        content: "".into(),
-                        placeholder: "Username".into(),
-                        selected_range: 0..0,
-                        selection_reversed: false,
-                        marked_range: None,
-                        last_layout: None,
-                        last_bounds: None,
-                        is_selecting: false,
-                        masked: false,
-                    });
-
-                    let password_input = cx.new(|cx| TextInput {
-                        focus_handle: cx.focus_handle(),
-                        content: "".into(),
-                        placeholder: "Password".into(),
-                        selected_range: 0..0,
-                        selection_reversed: false,
-                        marked_range: None,
-                        last_layout: None,
-                        last_bounds: None,
-                        is_selecting: false,
-                        masked: true,
-                    });
-
-                    let login_screen = cx.new(|cx| LoginScreen {
-                        server_input,
-                        username_input,
-                        password_input,
-                        focus_handle: cx.focus_handle(),
-                    });
+                    let login_screen = LoginScreen::new(cx);
 
                     cx.new(|cx| {
                         let mut subscriptions = vec![];
-                        subscriptions.push(cx.subscribe(
-                            &login_screen,
-                            |root: &mut RootView, _emitter, event, cx| {
-                                root.screen = event.0.clone();
+                        subscriptions.push(cx.subscribe(&login_screen, {
+                            let login_screen = login_screen.clone();
+
+                            move |root: &mut RootView, _emitter, event, cx| {
+                                root.screen = match event.0 {
+                                    NavTarget::Login => Screen::Login(login_screen.clone()),
+                                    NavTarget::Main => Screen::Main(MainScreen::new(cx)),
+                                };
                                 cx.notify();
-                            },
-                        ));
+                            }
+                        }));
 
                         RootView {
                             screen: Screen::Login(login_screen.clone()),
