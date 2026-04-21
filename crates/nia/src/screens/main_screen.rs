@@ -1,14 +1,21 @@
 use gpui::{
-    App, AppContext, Context, Entity, EventEmitter, IntoElement, ParentElement, Render, Styled,
-    Window, div, rgb,
+    App, AppContext, Context, Entity, EventEmitter, InteractiveElement, IntoElement, ParentElement,
+    Render, Styled, Window, div, rgb,
 };
 use nia_navidrome::lists::get_album_list;
-use nia_navidrome::models::AlbumEntry;
+use nia_navidrome::models::AlbumID3;
 
+use crate::screens::AlbumScreen;
 use crate::{AppState, NavigateTo};
 
+pub enum MainRoute {
+    AlbumList,
+    Album(Entity<AlbumScreen>),
+}
+
 pub struct MainScreen {
-    albums: Option<Vec<AlbumEntry>>,
+    albums: Option<Vec<AlbumID3>>,
+    route: MainRoute,
 }
 
 impl MainScreen {
@@ -19,7 +26,10 @@ impl MainScreen {
             let server = state.base_url.clone();
             let credentials = state.credentials.clone().unwrap();
 
-            let entity = Self { albums: None };
+            let entity = Self {
+                albums: None,
+                route: MainRoute::AlbumList,
+            };
 
             cx.spawn(async move |this, cx| {
                 // TODO: hardcoding this to "recent" for testing, will impl the rest later
@@ -42,20 +52,37 @@ impl MainScreen {
             entity
         })
     }
+
+    fn on_album_click(&mut self, album_id: String, cx: &mut Context<Self>) {
+        self.route = MainRoute::Album(AlbumScreen::new(cx, album_id.clone()));
+        cx.notify();
+    }
 }
 
 impl EventEmitter<NavigateTo> for MainScreen {}
 
 impl Render for MainScreen {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        match &self.albums {
-            None => div().bg(rgb(0xaaaaaa)).size_full(),
-            Some(albums) => div()
-                .bg(rgb(0xaaaaaa))
-                .size_full()
-                .flex()
-                .flex_col()
-                .children(albums.iter().map(|a| div().child(a.title.clone()))),
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        match &self.route {
+            MainRoute::AlbumList => match &self.albums {
+                None => div().bg(rgb(0xaaaaaa)).size_full().into_any_element(),
+                Some(albums) => div()
+                    .bg(rgb(0xaaaaaa))
+                    .size_full()
+                    .flex()
+                    .flex_col()
+                    .children(albums.iter().map(|a| {
+                        let id = a.id.clone();
+                        div().child(a.name.clone()).on_mouse_up(
+                            gpui::MouseButton::Left,
+                            cx.listener(move |this, _, _window, cx| {
+                                this.on_album_click(id.clone(), cx);
+                            }),
+                        )
+                    }))
+                    .into_any_element(),
+            },
+            MainRoute::Album(album) => album.clone().into_any_element(),
         }
     }
 }

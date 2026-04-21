@@ -4,14 +4,14 @@ use futures::AsyncReadExt;
 use gpui_http_client::{AsyncBody, HttpClient};
 
 use crate::auth::NavidromeCredentials;
-use crate::models::{AlbumResponse, NowPlayingResponse, SubsonicResponse};
+use crate::models::{AlbumListResponse, NowPlayingResponse, SubsonicResponse};
 
 pub async fn get_album_list(
     client: Arc<dyn HttpClient>,
     server: String,
     credentials: NavidromeCredentials,
     list_type: String,
-) -> anyhow::Result<SubsonicResponse<AlbumResponse>> {
+) -> anyhow::Result<SubsonicResponse<AlbumListResponse>> {
     let url = format!("{}/rest/getAlbumList", &server);
     let params = [
         ("u", credentials.username.clone()),
@@ -28,7 +28,7 @@ pub async fn get_album_list(
 
     let mut body = vec![];
     resp.body_mut().read_to_end(&mut body).await?;
-    let data: SubsonicResponse<AlbumResponse> = serde_json::from_slice(&body)?;
+    let data: SubsonicResponse<AlbumListResponse> = serde_json::from_slice(&body)?;
 
     Ok(data)
 }
