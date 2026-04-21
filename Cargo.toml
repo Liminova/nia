@@ -50,3 +50,4 @@ reqwest_client = { path = "crates/reqwest_client" }
 rustls = "0.23.38"
 rustls-platform-verifier = "0.7.0"
 whoami = "2.1.1"
+libmpv = "5.0.3"

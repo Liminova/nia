@@ -1,5 +1,6 @@
 mod screens;
 
+use std::process;
 use std::sync::Arc;
 
 use gpui::prelude::*;
@@ -8,18 +9,28 @@ use gpui::{
     WindowOptions,
 };
 use gpui_tokio::Tokio;
-use nia_navidrome::auth::{NavidromeCredentials, login};
+use libmpv::events::Event;
+use libmpv::{Mpv, mpv_end_file_reason};
+use nia_navidrome::auth::NavidromeCredentials;
 use nia_ui::components::text_input::{
     Backspace, Cut, Delete, End, Home, Left, Paste, Quit, Right, SelectAll, SelectLeft,
     SelectRight, ShowCharacterPalette,
 };
 use reqwest_client::ReqwestClient;
+use tokio::sync::mpsc::Sender;
 
 use crate::screens::{LoginScreen, MainScreen};
 
 struct AppState {
     base_url: String,
     credentials: Option<NavidromeCredentials>,
+    player: &'static Mpv,
+}
+
+enum PlayerEvent {
+    Play,
+    Pause,
+    Stopped(u32),
 }
 
 impl Global for AppState {}
@@ -73,6 +84,46 @@ fn main() {
         .init();
 
     Application::new().run(|cx| {
+        let mpv: &'static Mpv = match Mpv::with_initializer(|init| {
+            init.set_option("force-window", "no")?;
+            init.set_option("audio-display", "no")?;
+
+            Ok(())
+        }) {
+            Ok(mpv) => Box::leak(Box::new(mpv)),
+            Err(e) => {
+                eprintln!("unable to initialize mpv: {e}");
+                process::exit(1)
+            }
+        };
+
+        let mut ev_ctx = match mpv.create_client(None) {
+            Ok(ev_ctx) => ev_ctx,
+            Err(e) => {
+                eprintln!("unable to create client: {e}");
+                process::exit(1)
+            }
+        };
+        ev_ctx.disable_deprecated_events().ok();
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<PlayerEvent>(32);
+
+        std::thread::spawn(move || {
+            loop {
+                match ev_ctx.wait_event(0f64) {
+                    Some(Ok(Event::EndFile(mpv_end_file_reason::Stop))) => {
+                        tx.blocking_send(PlayerEvent::Pause).ok();
+                    }
+                    Some(Ok(Event::EndFile(r))) => {
+                        tx.blocking_send(PlayerEvent::Stopped(r)).ok();
+                    }
+                    Some(Ok(Event::StartFile)) => {
+                        tx.blocking_send(PlayerEvent::Play).ok();
+                    }
+                    _ => {}
+                }
+            }
+        });
+
         gpui_tokio::init(cx);
         let http = {
             let _guard = Tokio::handle(cx).enter();
@@ -88,15 +139,20 @@ fn main() {
             Ok(creds) => AppState {
                 base_url: creds.server.clone(),
                 credentials: Some(creds),
+                player: mpv,
             },
             Err(_) => {
                 tracing::warn!("failed to load credentials for user {}", user);
                 AppState {
                     base_url: String::new(),
                     credentials: None,
+                    player: mpv,
                 }
             }
         };
+
+        cx.spawn(async move |cx| while let Some(event) = rx.recv().await {})
+            .detach();
 
         cx.set_global::<AppState>(state);
 

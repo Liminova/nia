@@ -1,8 +1,10 @@
 use gpui::{
-    App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Window, div, rgb,
+    App, AppContext, Context, Entity, InteractiveElement, IntoElement, MouseButton, MouseUpEvent,
+    ParentElement, Render, Styled, Window, div, rgb,
 };
 use nia_navidrome::browsing::get_album_info;
 use nia_navidrome::models::AlbumID3;
+use nia_navidrome::stream::get_stream_url;
 
 use crate::AppState;
 
@@ -40,16 +42,33 @@ impl AlbumScreen {
             entity
         })
     }
+
+    fn on_song_click(&mut self, song_id: String, cx: &mut Context<Self>) {
+        let state = cx.global::<AppState>();
+        let server = state.base_url.clone();
+        let credentials = state.credentials.clone().unwrap();
+        let url = get_stream_url(server, credentials, song_id);
+
+        state.player.command("loadfile", &[&url]).ok();
+    }
 }
 
 impl Render for AlbumScreen {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         match &self.album {
             Some(album) => {
                 let songs = album.song.as_ref().map(|songs| {
                     songs
                         .iter()
-                        .map(|song| div().child(song.title.clone()))
+                        .map(|song| {
+                            let id = song.id.clone();
+                            div().child(song.title.clone()).on_mouse_up(
+                                MouseButton::Left,
+                                cx.listener(move |this, _, _window, cx| {
+                                    this.on_song_click(id.clone(), cx);
+                                }),
+                            )
+                        })
                         .collect::<Vec<_>>()
                 });
 
